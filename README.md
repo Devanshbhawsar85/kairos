@@ -1,343 +1,163 @@
-📖 Kairos - AI-Powered Auto-Scaling System
+# 📖 Kairos — AI-Powered Auto-Scaling System
 
-🚀 Overview
-Kairos (Greek for "the right, critical moment") is an intelligent auto-scaling system that dynamically scales Docker containers based on real-time CPU/Memory metrics using AI-powered decision making with RAG (Retrieval-Augmented Generation) architecture.
+## 🚀 Overview
 
+**Kairos** (Greek for *“the right, critical moment”*) is an intelligent auto-scaling system that dynamically scales Docker containers based on real-time CPU and memory metrics using AI-powered decision-making with a **RAG (Retrieval-Augmented Generation)** architecture.
 
+---
 
-🎯 Features
+## 🎯 Features
 
-✅ AI-Driven Scaling - Uses Groq LLM (LLaMA 70B) for intelligent scaling decisions
+* 🤖 **AI-Driven Scaling** — Uses Groq LLM (LLaMA 70B) for decisions
+* 🧠 **Semantic Memory** — Stores historical decisions as embeddings (pgvector)
+* 🔍 **RAG Architecture** — Context-aware scaling using past data
+* ⚡ **Event-Driven** — Microservices communicate via Kafka + Zookeeper
+* 🛡️ **Graceful Fallback** — Rule-based scaling when AI fails
+* 📊 **Real-Time Monitoring** — Prometheus + Grafana dashboards
+* 🔔 **Alerts** — Slack notifications for scaling events
+* 🧪 **Load Tested** — k6 (100 users, 300 req/sec peak)
 
-✅ Semantic Memory - Stores historical decisions as 768-dim embeddings in pgvector
+---
 
-✅ RAG Architecture - Retrieves similar past situations for context-aware scaling
+## 🏗️ Architecture
 
-✅ Event-Driven - 5 microservices communicate via Kafka + Zookeeper
+```
+Main App → Auto-Scaler → Kafka → Workers → Monitoring + Alerts
+```
 
-✅ Graceful Fallback - Rule-based scaling (CPU >70%, Memory >80%) when AI unavailable
+**Microservices:**
 
-✅ Real-Time Monitoring - Prometheus + Grafana dashboards
+| Service             | Port | Role               |
+| ------------------- | ---- | ------------------ |
+| Auto-Scaler         | 8080 | Decision engine    |
+| Remediation Worker  | 8084 | Executes scaling   |
+| Analytics Worker    | 8083 | Stores metrics     |
+| Notification Worker | 8082 | Sends alerts       |
+| Main App            | 8081 | Target application |
 
-✅ Instant Alerts - Slack notifications for scaling events and errors
+---
 
-✅ Load Tested - Validated with k6 (100 concurrent users, 300 req/sec peak)
+## 🧠 AI Workflow
 
+1. Collect CPU & Memory metrics
+2. Generate embeddings (Jina AI)
+3. Store in pgvector
+4. Retrieve similar past cases
+5. Send context to Groq LLM
+6. Get decision (SCALE_UP / DOWN / etc.)
+7. Publish to Kafka
+8. Execute + store + notify
 
-🏗️ Architecture
+---
 
-┌─────────────────────────────────────────────────────────────────┐
-│                         Kairos System                           │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  ┌──────────────┐     ┌──────────────┐     ┌──────────────┐    │
-│  │  Main App    │────▶│  Auto-Scaler │────▶│    Kafka     │    │
-│  │  (Docker)    │     │  (Decider)   │     │  + Zookeeper │    │
-│  └──────────────┘     └──────────────┘     └──────────────┘    │
-│         │                    │                    │             │
-│         ▼                    ▼                    ▼             │
-│  ┌──────────────┐     ┌──────────────┐     ┌──────────────┐    │
-│  │  PostgreSQL  │     │  Remediation │     │  Analytics   │    │
-│  │  + pgvector  │     │   Worker     │     │   Worker     │    │
-│  └──────────────┘     └──────────────┘     └──────────────┘    │
-│                              │                    │             │
-│                              ▼                    ▼             │
-│                       ┌──────────────┐     ┌──────────────┐    │
-│                       │ Notification │     │  Prometheus  │    │
-│                       │   Worker     │     │  + Grafana   │    │
-│                       └──────────────┘     └──────────────┘    │
-│                              │                                   │
-│                              ▼                                   │
-│                       ┌──────────────┐                          │
-│                       │    Slack     │                          │
-│                       │  Webhook     │                          │
-│                       └──────────────┘                          │
-└─────────────────────────────────────────────────────────────────┘
+## 📊 Scaling Rules (Fallback)
 
-📦 5 Microservices
+| Condition                | Action     |
+| ------------------------ | ---------- |
+| CPU > 70%                | SCALE_UP   |
+| Memory > 80%             | SCALE_UP   |
+| CPU < 25% & Memory < 40% | SCALE_DOWN |
+| Container down           | RESTART    |
 
-Service	Port	Responsibility
-Auto-Scaler	8080	Monitors containers, makes scaling decisions, publishes to Kafka
-Remediation Worker	8084	Executes scaling actions (start/stop containers)
-Analytics Worker	8083	Stores metrics and decisions in PostgreSQL
-Notification Worker	8082	Sends Slack alerts for scaling events and errors
-Main App	8081	Your application being auto-scaled
+---
 
+## 🛠️ Tech Stack
 
-🧠 AI & RAG Flow
+* **Java 17 + Spring Boot**
+* **Groq LLM + Jina AI**
+* **PostgreSQL + pgvector**
+* **Kafka + Zookeeper**
+* **Docker**
+* **Prometheus + Grafana**
+* **Slack Webhooks**
 
-1. Collect Docker stats (CPU, Memory)
-2. Generate 768-dim embedding via Jina AI
-3. Store in pgvector with similarity index
-4. Query similar past situations (cosine similarity)
-5. Send current stats + similar past to Groq LLM
-6. Groq decides: SCALE_UP / SCALE_DOWN / RESTART / NONE
-7. Publish decision to Kafka
-8. Remediation worker executes scaling
-9. Analytics worker stores decision
-10. Notification worker sends Slack alert
+---
 
+## 🚦 Prerequisites
 
-📊 Scaling Rules
+* Docker & Docker Compose
+* Java 17
+* PostgreSQL (with pgvector)
+* Kafka + Zookeeper
 
-Condition	Action
-CPU > 70%	SCALE_UP
-Memory > 80%	SCALE_UP
-CPU < 25% AND Memory < 40%	SCALE_DOWN
-Container status "exited/dead"	RESTART
-AI API failure	Fallback to rule-based
+---
 
+## 🔧 Setup
 
-🛠️ Tech Stack
+### 1. Clone Repo
 
-Category	Technology
-Language	Java 17
-Framework	Spring Boot
-AI/LLM	Groq (LLaMA 70B), Jina AI (embeddings)
-Vector DB	PostgreSQL + pgvector (768-dim)
-Message Broker	Apache Kafka + Zookeeper
-Container	Docker, Docker Java API
-Monitoring	Prometheus, Grafana
-Testing	k6 (load testing)
-Notifications	Slack Webhook
-
-
-
-🚦 Prerequisites
-
-# Required
-- Docker & Docker Compose
-- Java 17
-- PostgreSQL 16+ with pgvector
-- Apache Kafka + Zookeeper
-
-# API Keys
-- GROQ_API_KEY (Groq Cloud)
-- JINA_API_KEY (Jina AI)
-- SLACK_WEBHOOK_URL (optional)
-
-
-🔧 Installation
-1. Clone Repository
+```bash
 git clone https://github.com/your-repo/kairos.git
 cd kairos
-2. Configure Environment
-# Create .env file
-GROQ_API_KEY=your_groq_api_key
-JINA_API_KEY=your_jina_api_key
-SLACK_WEBHOOK_URL=your_slack_webhook_url (optional)
-3. Start Services
-# Start all services
+```
+
+### 2. Environment Variables
+
+Create `.env` (DO NOT COMMIT THIS FILE):
+
+```env
+GROQ_API_KEY=your_key
+JINA_API_KEY=your_key
+SLACK_WEBHOOK_URL=your_url
+```
+
+### 3. Start Services
+
+```bash
 docker-compose up -d --build
-
-# Verify all containers are running
 docker ps
-4. Initialize Database
+```
 
-# pgvector tables auto-create on startup
-# Verify schema
-docker exec -it postgres psql -U autoscaler -d autoscaler
+---
 
-5. Check Health
+## 🧪 Testing
 
-# Auto-scaler health
-curl http://localhost:8080/autoscaler/health
-
-# Main app health
-curl http://localhost:8081/api/health
-
-# Metrics endpoint
-curl http://localhost:8081/api/metrics
-🧪 Testing
-Load Test with k6
-
-# Run load test (ramps from 20 to 100 users over 2 minutes)
+```bash
 k6 run load-test.js
+```
 
-# Expected output:
-# - 100 concurrent users
-# - 300 requests/second peak
-# - <0.5% error rate
-Manual Scale Test
+---
 
-# Trigger scale up
-curl -X POST http://localhost:8080/autoscaler/scale-up
+## 📈 Monitoring
 
-# Check status
-curl http://localhost:8080/autoscaler/status
+* Grafana: http://localhost:3000
+* Prometheus: http://localhost:9090
 
-# Trigger monitoring cycle
-curl -X POST http://localhost:8080/autoscaler/trigger
-📈 Monitoring
-Grafana Dashboards
+---
 
-URL: http://localhost:3000
-Login: admin / admin
+## 🐛 Troubleshooting
 
-Dashboards available:
-- Container Metrics (CPU, Memory, Network)
-- Scaling Events History
-- AI vs Rule Decision Ratio
-- Error Rates & Alerts
-Prometheus Metrics
+* Docker issues → check socket
+* Kafka issues → restart container
+* pgvector → ensure extension enabled
 
-URL: http://localhost:9090
+---
 
-Key metrics:
-- container_cpu_percent
-- container_memory_percent
-- scaling_events_total
-- ai_decision_latency_seconds
-📝 Configuration
-Application Properties
-yaml
-# application.yml
-autoscaler:
-  docker:
-    min-containers: 1
-    max-containers: 5
-    container-prefix: main-app
+## 📊 Key Metrics
 
-  scaling:
-    cpu-threshold: 70.0
-    memory-threshold: 80.0
-    cooldown-seconds: 150
+* 100 concurrent users
+* 300 req/sec peak
+* 75% AI decision coverage
+* 768-dim embeddings
 
-  monitoring:
-    interval-seconds: 60
+---
 
-  vector-store:
-    snapshot-retention: 500
-    event-retention: 200
-    top-k-snapshots: 20
-    top-k-events: 10
+## 🤝 Contributing
 
+1. Fork repo
+2. Create branch
+3. Commit changes
+4. Push & open PR
 
-🔄 Data Flow Diagram
+---
 
-[Main App] ──(load)──▶ [Docker Stats] ──(every 60s)──▶ [Auto-Scaler]
-                                                              │
-                                                    (CPU/Memory > thresholds)
-                                                              │
-                                                              ▼
-                                              [Jina AI - 768-dim embedding]
-                                                              │
-                                                              ▼
-                                              [pgvector - similarity search]
-                                                              │
-                                                              ▼
-                                              [Groq LLM - scaling decision]
-                                                              │
-                                                              ▼
-                                              [Kafka - scaling-events topic]
-                                                              │
-                    ┌─────────────────┬─────────────────────┼─────────────────────┐
-                    │                 │                     │                     │
-                    ▼                 ▼                     ▼                     ▼
-           [Remediation]      [Analytics]           [Notification]        [Grafana]
-           (start/stop         (save to              (Slack alert)        (dashboard)
-            containers)         DB)
+## 📧 Contact
 
+**Devansh Bhawsar**
+GitHub: https://github.com/Devanshbhawsar85
 
-🐛 Troubleshooting
-Common Issues
-Issue: Docker connection refused
+---
 
-
-# Solution
-export DOCKER_HOST=unix:///var/run/docker.sock
-Issue: Kafka connection timeout
-
-
-# Check Kafka status
-docker logs kafka
-# Restart Kafka
-docker-compose restart kafka
-Issue: AI API rate limited
-
-
-# Increase cooldown in application.yml
-autoscaler.scaling.cooldown-seconds: 180
-Issue: pgvector type not registered
-
-
-
-# Re-run initialization
-docker exec -it postgres psql -U autoscaler -d autoscaler -c "CREATE EXTENSION IF NOT EXISTS vector;"
-📊 Key Metrics from Testing
-Metric	Value
-Container range	1 - 5
-CPU threshold	>70%
-Memory threshold	>80%
-Monitoring interval	60 seconds
-AI decision coverage	75%
-Load test	100 concurrent users
-Peak RPS	300 requests/second
-Embedding dimensions	768
-
-🗄️ Database Schema
-sql
--- Metric snapshots with embeddings
-CREATE TABLE metric_snapshots (
-    id BIGSERIAL PRIMARY KEY,
-    container TEXT NOT NULL,
-    snapshot TEXT NOT NULL,
-    embedding vector(768) NOT NULL,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Scaling decisions with embeddings
-CREATE TABLE scaling_events_vec (
-    id BIGSERIAL PRIMARY KEY,
-    container TEXT NOT NULL,
-    event TEXT NOT NULL,
-    embedding vector(768) NOT NULL,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Scaling history (plain text)
-CREATE TABLE scaling_history (
-    id BIGSERIAL PRIMARY KEY,
-    container TEXT NOT NULL,
-    action TEXT NOT NULL,
-    reason TEXT,
-    severity TEXT,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-
-🤝 Contributing
-Fork the repository
-
-Create feature branch (git checkout -b feature/amazing-feature)
-
-Commit changes (git commit -m 'Add amazing feature')
-
-Push to branch (git push origin feature/amazing-feature)
-
-Open Pull Request
-
-
-
-
-🙏 Acknowledgments
-Groq for LLM API
-
-Jina AI for embeddings
-
-pgvector for vector similarity search
-
-Apache Kafka for event streaming
-
-
-📧 Contact
-Project Maintainer: Devansh Bhawsar
-Email: bhawsard75@gmail.com
-GitHub: https://github.com/Devanshbhawsar85/
-
-
-If you find this project useful, please give it a star! ⭐
+⭐ If you found this useful, give it a star!
 
 Built with ☕ and AI
-
-
