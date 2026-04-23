@@ -1,9 +1,12 @@
-it
 📖 Kairos - AI-Powered Auto-Scaling System
+
 🚀 Overview
 Kairos (Greek for "the right, critical moment") is an intelligent auto-scaling system that dynamically scales Docker containers based on real-time CPU/Memory metrics using AI-powered decision making with RAG (Retrieval-Augmented Generation) architecture.
 
+
+
 🎯 Features
+
 ✅ AI-Driven Scaling - Uses Groq LLM (LLaMA 70B) for intelligent scaling decisions
 
 ✅ Semantic Memory - Stores historical decisions as 768-dim embeddings in pgvector
@@ -20,8 +23,9 @@ Kairos (Greek for "the right, critical moment") is an intelligent auto-scaling s
 
 ✅ Load Tested - Validated with k6 (100 concurrent users, 300 req/sec peak)
 
+
 🏗️ Architecture
-text
+
 ┌─────────────────────────────────────────────────────────────────┐
 │                         Kairos System                           │
 ├─────────────────────────────────────────────────────────────────┤
@@ -49,15 +53,19 @@ text
 │                       │  Webhook     │                          │
 │                       └──────────────┘                          │
 └─────────────────────────────────────────────────────────────────┘
+
 📦 5 Microservices
+
 Service	Port	Responsibility
 Auto-Scaler	8080	Monitors containers, makes scaling decisions, publishes to Kafka
 Remediation Worker	8084	Executes scaling actions (start/stop containers)
 Analytics Worker	8083	Stores metrics and decisions in PostgreSQL
 Notification Worker	8082	Sends Slack alerts for scaling events and errors
 Main App	8081	Your application being auto-scaled
+
+
 🧠 AI & RAG Flow
-text
+
 1. Collect Docker stats (CPU, Memory)
 2. Generate 768-dim embedding via Jina AI
 3. Store in pgvector with similarity index
@@ -68,14 +76,20 @@ text
 8. Remediation worker executes scaling
 9. Analytics worker stores decision
 10. Notification worker sends Slack alert
+
+
 📊 Scaling Rules
+
 Condition	Action
 CPU > 70%	SCALE_UP
 Memory > 80%	SCALE_UP
 CPU < 25% AND Memory < 40%	SCALE_DOWN
 Container status "exited/dead"	RESTART
 AI API failure	Fallback to rule-based
+
+
 🛠️ Tech Stack
+
 Category	Technology
 Language	Java 17
 Framework	Spring Boot
@@ -86,8 +100,11 @@ Container	Docker, Docker Java API
 Monitoring	Prometheus, Grafana
 Testing	k6 (load testing)
 Notifications	Slack Webhook
+
+
+
 🚦 Prerequisites
-bash
+
 # Required
 - Docker & Docker Compose
 - Java 17
@@ -98,32 +115,31 @@ bash
 - GROQ_API_KEY (Groq Cloud)
 - JINA_API_KEY (Jina AI)
 - SLACK_WEBHOOK_URL (optional)
+
+
 🔧 Installation
 1. Clone Repository
-bash
 git clone https://github.com/your-repo/kairos.git
 cd kairos
 2. Configure Environment
-bash
 # Create .env file
 GROQ_API_KEY=your_groq_api_key
 JINA_API_KEY=your_jina_api_key
 SLACK_WEBHOOK_URL=your_slack_webhook_url (optional)
 3. Start Services
-bash
 # Start all services
 docker-compose up -d --build
 
 # Verify all containers are running
 docker ps
 4. Initialize Database
-bash
+
 # pgvector tables auto-create on startup
 # Verify schema
 docker exec -it postgres psql -U autoscaler -d autoscaler
-\dt
+
 5. Check Health
-bash
+
 # Auto-scaler health
 curl http://localhost:8080/autoscaler/health
 
@@ -134,7 +150,7 @@ curl http://localhost:8081/api/health
 curl http://localhost:8081/api/metrics
 🧪 Testing
 Load Test with k6
-bash
+
 # Run load test (ramps from 20 to 100 users over 2 minutes)
 k6 run load-test.js
 
@@ -143,7 +159,7 @@ k6 run load-test.js
 # - 300 requests/second peak
 # - <0.5% error rate
 Manual Scale Test
-bash
+
 # Trigger scale up
 curl -X POST http://localhost:8080/autoscaler/scale-up
 
@@ -154,7 +170,7 @@ curl http://localhost:8080/autoscaler/status
 curl -X POST http://localhost:8080/autoscaler/trigger
 📈 Monitoring
 Grafana Dashboards
-text
+
 URL: http://localhost:3000
 Login: admin / admin
 
@@ -164,7 +180,7 @@ Dashboards available:
 - AI vs Rule Decision Ratio
 - Error Rates & Alerts
 Prometheus Metrics
-text
+
 URL: http://localhost:9090
 
 Key metrics:
@@ -195,8 +211,10 @@ autoscaler:
     event-retention: 200
     top-k-snapshots: 20
     top-k-events: 10
+
+
 🔄 Data Flow Diagram
-text
+
 [Main App] ──(load)──▶ [Docker Stats] ──(every 60s)──▶ [Auto-Scaler]
                                                               │
                                                     (CPU/Memory > thresholds)
@@ -219,28 +237,31 @@ text
            [Remediation]      [Analytics]           [Notification]        [Grafana]
            (start/stop         (save to              (Slack alert)        (dashboard)
             containers)         DB)
+
+
 🐛 Troubleshooting
 Common Issues
 Issue: Docker connection refused
 
-bash
+
 # Solution
 export DOCKER_HOST=unix:///var/run/docker.sock
 Issue: Kafka connection timeout
 
-bash
+
 # Check Kafka status
 docker logs kafka
 # Restart Kafka
 docker-compose restart kafka
 Issue: AI API rate limited
 
-bash
+
 # Increase cooldown in application.yml
 autoscaler.scaling.cooldown-seconds: 180
 Issue: pgvector type not registered
 
-bash
+
+
 # Re-run initialization
 docker exec -it postgres psql -U autoscaler -d autoscaler -c "CREATE EXTENSION IF NOT EXISTS vector;"
 📊 Key Metrics from Testing
@@ -253,6 +274,7 @@ AI decision coverage	75%
 Load test	100 concurrent users
 Peak RPS	300 requests/second
 Embedding dimensions	768
+
 🗄️ Database Schema
 sql
 -- Metric snapshots with embeddings
@@ -282,6 +304,8 @@ CREATE TABLE scaling_history (
     severity TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+
 🤝 Contributing
 Fork the repository
 
@@ -293,8 +317,8 @@ Push to branch (git push origin feature/amazing-feature)
 
 Open Pull Request
 
-📄 License
-MIT License - See LICENSE file
+
+
 
 🙏 Acknowledgments
 Groq for LLM API
@@ -305,12 +329,13 @@ pgvector for vector similarity search
 
 Apache Kafka for event streaming
 
-📧 Contact
-Project Maintainer: Your Name
-Email: your.email@example.com
-GitHub: github.com/yourusername
 
-⭐ Star History
+📧 Contact
+Project Maintainer: Devansh Bhawsar
+Email: bhawsard75@gmail.com
+GitHub: https://github.com/Devanshbhawsar85/
+
+
 If you find this project useful, please give it a star! ⭐
 
 Built with ☕ and AI
