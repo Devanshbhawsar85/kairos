@@ -1,0 +1,3 @@
+cat loadtest.js | docker run --rm -i grafana/k6 run -
+
+docker logs -f auto-scaler

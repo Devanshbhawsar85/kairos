@@ -1,0 +1,65 @@
+spring:
+  application:
+    name: remediation-worker
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:kafka:29092}
+    consumer:
+      group-id: remediation-worker
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      max-poll-records: 1
+      max-poll-interval-ms: 300000
+
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:postgres}:5432/autoscaler
+    username: ${POSTGRES_USER:autoscaler}
+    password: ${POSTGRES_PASSWORD:autoscaler123}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 2
+      connection-timeout: 20000
+      idle-timeout: 300000
+      max-lifetime: 1200000
+      pool-name: RemediationHikariPool
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+
+  task:
+    execution:
+      pool:
+        core-size: 4
+        max-size: 8
+        queue-capacity: 20
+        keep-alive: 60s
+      thread-name-prefix: remediation-async-
+
+server:
+  port: 8084
+
+docker:
+  host: unix:///var/run/docker.sock
+  # ✅ FIXED: was 'docker-autoscaler-main-app-1:latest' which is the
+  # compose project-prefixed name. Use the bare image name.
+  image-name: main-app:latest
+  container-prefix: main-app
+  base-container-name: main-app-1
+  network-name: autoscaler-net
+  max-containers: 5
+  min-containers: 1
+
+remediation:
+  cooldown-ms: 60000
+
+logging:
+  level:
+    com.worker: INFO
+    org.apache.kafka: WARN
+    com.zaxxer.hikari: INFO
+  pattern:
+    console: "%d{HH:mm:ss} [%-5level] %logger{30} — %msg%n"

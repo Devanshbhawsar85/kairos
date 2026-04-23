@@ -1,0 +1,18 @@
+spring:
+  application:
+    name: main-app
+
+server:
+  port: 8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,info
+
+logging:
+  level:
+    com.myapp: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"

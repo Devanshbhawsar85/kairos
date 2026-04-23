@@ -1,0 +1,23 @@
+spring:
+  application:
+    name: notification-worker
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:kafka:29092}
+    consumer:
+      group-id: notification-worker
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+
+server:
+  port: 8082
+
+slack:
+  webhook-url: ${WEBHOOK_URL:}
+
+logging:
+  level:
+    com.worker: INFO
+    org.apache.kafka: WARN
+  pattern:
+    console: "%d{HH:mm:ss} [%-5level] %logger{30} — %msg%n"

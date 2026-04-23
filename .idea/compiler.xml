@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CompilerConfiguration">
+    <annotationProcessing>
+      <profile default="true" name="Default" enabled="true" />
+      <profile name="Maven default annotation processors profile" enabled="true">
+        <sourceOutputDir name="target/generated-sources/annotations" />
+        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
+        <outputRelativeToContentRoot value="true" />
+        <module name="main-app" />
+        <module name="analytics-worker" />
+        <module name="notification-worker" />
+        <module name="auto-scaler" />
+        <module name="remediation-worker" />
+      </profile>
+    </annotationProcessing>
+  </component>
+  <component name="JavacSettings">
+    <option name="ADDITIONAL_OPTIONS_OVERRIDE">
+      <module name="analytics-worker" options="-parameters" />
+      <module name="auto-scaler" options="-parameters" />
+      <module name="main-app" options="-parameters" />
+      <module name="notification-worker" options="-parameters" />
+      <module name="remediation-worker" options="-parameters" />
+    </option>
+  </component>
+</project>

@@ -1,0 +1,86 @@
+spring:
+  application:
+    name: auto-scaler
+
+  datasource:
+    url: jdbc:postgresql://postgres:5432/autoscaler
+    username: ${POSTGRES_USER:autoscaler}
+    password: ${POSTGRES_PASSWORD:autoscaler123}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:kafka:29092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+      retries: 3
+
+server:
+  port: 8080
+
+autoscaler:
+  docker:
+    image-name: main-app:latest
+    container-prefix: main-app
+    min-containers: 1
+    max-containers: 5
+    docker-host: unix:///var/run/docker.sock
+    network-name: autoscaler-net
+  scaling:
+    cpu-threshold: 70.0
+    memory-threshold: 80.0
+    cooldown-seconds: 60
+  monitoring:
+    interval-seconds: 30
+    log-sample-lines: 20
+  webhook:
+    url: ${WEBHOOK_URL:}
+    enabled: ${WEBHOOK_ENABLED:false}
+    cooldown-seconds: 60
+    max-per-hour: 10
+  vector-store:
+    snapshot-retention: 500
+    event-retention: 200
+    top-k-snapshots: 20
+    top-k-events: 10
+
+# ── Groq AI (chat completions only) ─────────────────────────────────────
+groq:
+  api:
+    key: ${GROQ_API_KEY:}
+  model: llama-3.3-70b-versatile
+
+# ── Jina AI (embeddings only) ────────────────────────────────────────────
+jina:
+  api:
+    key: ${JINA_API_KEY:}
+
+logging:
+  level:
+    com.autoscaler: INFO
+    com.github.dockerjava: WARN
+    org.springframework.web: WARN
+    org.apache.kafka: WARN
+    org.springframework.jdbc: WARN
+  pattern:
+    console: "%d{HH:mm:ss} [%-5level] %logger{30} — %msg%n"
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,info,prometheus
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    export:
+      prometheus:
+        enabled: true

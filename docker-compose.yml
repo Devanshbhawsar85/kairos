@@ -1,0 +1,200 @@
+version: '3.8'
+
+services:
+
+  # ── Main Java Application ─────────────────────────────────────
+  main-app-1:
+    build:
+      context: ./main-app
+      dockerfile: Dockerfile
+    container_name: main-app-1
+    ports:
+      - "8081:8080"
+    environment:
+      - SERVER_PORT=8080
+      - JAVA_OPTS=-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0
+    networks:
+      - autoscaler-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/api/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+
+  # ── Auto-Scaler Agent ─────────────────────────────────────────
+  auto-scaler:
+    build:
+      context: ./auto-scaler
+      dockerfile: Dockerfile
+    container_name: auto-scaler
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      - JAVA_OPTS=-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - autoscaler-net
+    depends_on:
+      main-app-1:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── Notification Worker ───────────────────────────────────────
+  notification-worker:
+    build:
+      context: ./workers/notification-worker
+      dockerfile: Dockerfile
+    container_name: notification-worker
+    env_file:
+      - .env
+    networks:
+      - autoscaler-net
+    depends_on:
+      kafka:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── Analytics Worker ──────────────────────────────────────────
+  analytics-worker:
+    build:
+      context: ./workers/analytics-worker
+      dockerfile: Dockerfile
+    container_name: analytics-worker
+    env_file:
+      - .env
+    networks:
+      - autoscaler-net
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── Remediation Worker ────────────────────────────────────────
+  remediation-worker:
+    build:
+      context: ./workers/remediation-worker
+      dockerfile: Dockerfile
+    container_name: remediation-worker
+    env_file:
+      - .env
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - autoscaler-net
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── Zookeeper ─────────────────────────────────────────────────
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - autoscaler-net
+    restart: unless-stopped
+
+  # ── Kafka ─────────────────────────────────────────────────────
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    container_name: kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    networks:
+      - autoscaler-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # ── PostgreSQL + pgvector ─────────────────────────────────────
+  # pgvector/pgvector:pg16 is the official image — ships with the
+  # vector extension pre-compiled, no extra build step needed.
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: postgres
+    environment:
+      POSTGRES_DB: autoscaler
+      POSTGRES_USER: autoscaler
+      POSTGRES_PASSWORD: autoscaler123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - autoscaler-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U autoscaler"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Prometheus ────────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - autoscaler-net
+    restart: unless-stopped
+
+  # ── Grafana ───────────────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    networks:
+      - autoscaler-net
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+networks:
+  autoscaler-net:
+    driver: bridge
+    name: autoscaler-net
+
+volumes:
+  postgres_data:
+  grafana_data:
